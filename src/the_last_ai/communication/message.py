@@ -21,6 +21,10 @@ class Message:
     receiver_position: tuple[int, int] | None = None
     claimed_position: tuple[int, int] | None = None
     concepts: list[str] = field(default_factory=list)
+    # Construction audit (computational triggers — not claimed feelings)
+    construction_reason: str | None = None
+    absence_driven: bool = False
+    about_entity_id: str | None = None
 
     def to_dict(self) -> JSONDict:
         return {
@@ -33,6 +37,9 @@ class Message:
             "sender_position": list(self.sender_position) if self.sender_position else None,
             "receiver_position": list(self.receiver_position) if self.receiver_position else None,
             "claimed_position": list(self.claimed_position) if self.claimed_position else None,
+            "construction_reason": self.construction_reason,
+            "absence_driven": bool(self.absence_driven),
+            "about_entity_id": self.about_entity_id,
         }
 
     @classmethod
@@ -52,6 +59,13 @@ class Message:
             receiver_position=_pos(data.get("receiver_position")),
             claimed_position=_pos(data.get("claimed_position")),
             concepts=[str(c) for c in data.get("concepts", [])],
+            construction_reason=(
+                str(data["construction_reason"]) if data.get("construction_reason") else None
+            ),
+            absence_driven=bool(data.get("absence_driven", False)),
+            about_entity_id=(
+                str(data["about_entity_id"]) if data.get("about_entity_id") else None
+            ),
         )
 
     def render_line(self) -> str:

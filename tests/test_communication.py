@@ -259,3 +259,41 @@ def test_vocabulary_separates_token_from_meaning():
 
 def test_detect_kind_communication():
     assert detect_kind({"tests": {"A_basic_communication": {}}, "seed": 0}) == "communication_seed"
+
+
+def test_absence_conditioned_message_tokens():
+    from the_last_ai.loss.model import EntityLossRecord, EntityStatus
+
+    sim = Simulation.create(
+        SimulationConfig(
+            seed=0, n_agents=3, n_resources=0, agent_type="PredictiveAgent", width=12, height=10
+        )
+    )
+    a = sim.agents["agent_000"]
+    assert isinstance(a, PredictiveAgent)
+    sim.world.agent_positions["agent_000"] = Position(3, 3)
+    sim.world.agent_positions["agent_001"] = Position(4, 3)
+    # Build a historical loss record with elevated pressure
+    rec = EntityLossRecord(entity_id="agent_001")
+    rec.status = EntityStatus.HISTORICAL
+    rec.significance = 0.8
+    rec.social_loss = 0.5
+    rec.search_pressure = 0.4
+    rec.prediction_disruption = 0.4
+    rec.failed_searches = 2
+    rec.memory_before = {"expected_location": [5, 5]}
+    a.loss_tracker.records["agent_001"] = rec
+    a.last_absence_message_tick = -100
+    a.observe(sim.world)
+    # Clear resources from observation influence by ensuring construct prefers absence
+    msg = construct_message(a, receiver_id="agent_002", observation=a.last_observation)
+    assert msg is not None
+    assert msg.absence_driven is True
+    assert msg.about_entity_id == "agent_001"
+    assert msg.construction_reason
+    assert any(t in msg.tokens for t in ("gone", "where", "you", "come", "no", "wait"))
+    assert "where" in DEFAULT_VOCABULARY.tokens
+    assert "gone" in DEFAULT_VOCABULARY.tokens
+    assert Concept.ABSENCE in Concept
+    assert Concept.QUERY_LOCATION in Concept
+

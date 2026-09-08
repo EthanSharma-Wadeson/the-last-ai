@@ -107,6 +107,17 @@ Prefer hundreds of seeded trials, statistics, and failure analysis over new feat
 - [x] Technical vs interpreted JSON
 - [x] Docs: `docs/LOSS.md`
 
+## Phase 6d — Live Spectator
+
+- [x] Browser canvas spectator (Python sim authoritative)
+- [x] Camera follow / zoom / pan / agent select
+- [x] Live metrics + communication feed + events
+- [x] Collapse schedule support + terminal fallback
+- [x] SSE/HTTP interface (`last-ai spectate`)
+- [x] Demo modes (`--demo loss|collapse|contrast`), causal chain, deltas, spotlight, cinema moments
+- [x] Absence-conditioned messaging + sparklines + friend/stranger contrast
+- [x] Docs: `docs/SPECTATOR.md`
+
 ## Phase 6b — Research publication loop
 
 - [ ] Run statistically meaningful multi-seed trials

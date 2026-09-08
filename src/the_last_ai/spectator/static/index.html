@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>The Last AI — Live Spectator</title>
+  <link rel="stylesheet" href="/static/spectator.css"/>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <h1>THE LAST AI</h1>
+      <p class="sub">Live spectator · Python simulation is authoritative · no fabricated emotions</p>
+    </div>
+    <div class="status-chips">
+      <div class="chip"><span>POPULATION</span><strong id="pop">—</strong></div>
+      <div class="chip"><span>TICK</span><strong id="tick">0</strong></div>
+      <div class="chip"><span>TIME</span><strong id="etime">00:00</strong></div>
+      <div class="chip"><span>SPEED</span><strong id="speedLabel">5×</strong></div>
+      <div class="chip"><span>PHASE</span><strong id="phase">—</strong></div>
+      <div class="chip warn" id="countdownChip"><span>NEXT</span><strong id="countdown">—</strong></div>
+      <div class="chip accent"><span>SPECTATING</span><strong id="spectating">agent_000</strong></div>
+    </div>
+    <div class="controls">
+      <button type="button" id="btnPause">Pause</button>
+      <button type="button" id="btnStep">Step</button>
+      <select id="speedSelect">
+        <option value="0.25">0.25×</option>
+        <option value="0.5">0.5×</option>
+        <option value="1">1×</option>
+        <option value="2">2×</option>
+        <option value="5" selected>5×</option>
+        <option value="10">10×</option>
+        <option value="20">20×</option>
+      </select>
+      <button type="button" id="btnFollow">Unfollow</button>
+      <button type="button" id="btnDim">Dim others</button>
+      <button type="button" id="btnResetCam">Reset camera</button>
+      <a id="openLife" class="hidden" href="#" target="_blank">Open life observatory</a>
+    </div>
+  </header>
+
+  <main class="layout">
+    <section class="world-panel">
+      <canvas id="world" width="900" height="640" aria-label="World canvas"></canvas>
+      <div class="hint">Scroll zoom · Drag pan · Click agent · Spotlight = last-known locus of disappeared partner</div>
+      <div id="patternBar" class="pattern-bar"></div>
+    </section>
+
+    <aside class="side">
+      <section class="panel chain-panel">
+        <h2>Computational chain</h2>
+        <p id="chainSummary" class="muted small">No disappearance-linked chain yet.</p>
+        <ol id="causalChain" class="chain"></ol>
+      </section>
+      <section class="panel comm-panel">
+        <h2>Live communication</h2>
+        <div class="filters">
+          <button type="button" class="filter active" data-filter="all">All</button>
+          <button type="button" class="filter" data-filter="spectated">Spectated</button>
+          <button type="button" class="filter" data-filter="food">Food</button>
+          <button type="button" class="filter" data-filter="absence">Absence</button>
+        </div>
+        <div id="commFeed" class="feed"></div>
+      </section>
+      <section class="panel life-panel">
+        <h2>Life so far</h2>
+        <div id="lifeFeed" class="feed life"></div>
+      </section>
+      <section class="panel events-panel">
+        <h2>Events</h2>
+        <div id="eventFeed" class="feed events"></div>
+      </section>
+    </aside>
+  </main>
+
+  <footer class="bottom">
+    <section class="metrics panel">
+      <h2 id="metricsTitle">AGENT — LIVE</h2>
+      <p id="affectLabel" class="affect"></p>
+      <p id="partnerLine" class="muted small"></p>
+      <div id="sparkRow" class="spark-row" aria-label="Metric trajectories"></div>
+      <div id="behaviourRates" class="behaviour-rates muted small"></div>
+      <div id="contrastPanel" class="contrast-panel hidden"></div>
+      <div class="metric-grid" id="metricGrid"></div>
+      <p class="disclaimer" id="disclaimer"></p>
+    </section>
+    <section class="panel msg-detail" id="msgDetail">
+      <h2>Inspector</h2>
+      <pre id="msgDetailBody">Click a message, chain step, or life event.</pre>
+    </section>
+  </footer>
+
+  <div id="toast" class="toast hidden"></div>
+  <script src="/static/spectator.js"></script>
+</body>
+</html>

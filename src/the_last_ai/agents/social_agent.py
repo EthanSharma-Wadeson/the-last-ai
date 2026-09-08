@@ -10,6 +10,7 @@ from the_last_ai.agents.motivation import MotivationConfig, evaluate_drives
 from the_last_ai.agents.value_learner import LearningConfig
 from the_last_ai.communication.memory import CommunicationMemory
 from the_last_ai.communication.system import PendingClaim
+from the_last_ai.loss.model import EntityStatus
 from the_last_ai.loss.tracker import LossTracker
 from the_last_ai.memory.long_term import MemoryConfig
 from the_last_ai.rng import ExperimentRNG
@@ -114,10 +115,24 @@ class SocialAgent(MemoryAgent):
         self.last_sent_message: JSONDict | None = None
         self.last_received_message: JSONDict | None = None
         self.loss_tracker = LossTracker()
+        self.last_absence_message_tick: int = -10_000
 
     @property
     def symbolic_communication_enabled(self) -> bool:
         return bool(self.social_config.enable_symbolic_communication)
+
+    def _absence_behaviour_boost(self) -> float:
+        """Extra communicate / seek weight from measurable loss state."""
+        if not hasattr(self, "loss_tracker"):
+            return 0.0
+        max_search = 0.0
+        for rec in self.loss_tracker.records.values():
+            if rec.status == EntityStatus.HISTORICAL:
+                max_search = max(max_search, float(rec.search_pressure))
+        return (
+            0.55 * float(self.loss_tracker.aggregate_social_loss)
+            + 0.35 * max_search
+        )
 
     def _nearest_visible(self, observation: Observation, radius: int | None = None):
         radius = self.social_config.interact_radius if radius is None else radius
@@ -138,12 +153,14 @@ class SocialAgent(MemoryAgent):
         cooperate_score = trust + max(0.0, utility) + bias + 0.1 * (1.0 - uncertainty)
         compete_score = (1.0 - trust) + max(0.0, -utility) - bias
         share_score = trust * 0.8 + max(0.0, utility) * 0.5 + bias * 0.5
-        # Communicate competes with other actions; boosted by uncertainty / info need.
+        # Communicate competes with other actions; boosted by uncertainty / info need /
+        # computational loss (absence-conditioned talk toward present listeners).
         communicate_score = (
             0.35
             + 0.4 * uncertainty
             + 0.25 * (1.0 - info_rel)
             + self.social_config.communication_bias
+            + self._absence_behaviour_boost()
         )
         if not self.symbolic_communication_enabled:
             communicate_score *= 0.5
@@ -233,6 +250,48 @@ class SocialAgent(MemoryAgent):
                     return action
         return None
 
+    def _maybe_seek_historical_loss(
+        self, observation: Observation, rng: ExperimentRNG
+    ) -> Action | None:
+        """Prefer seek toward last-known loci of historically significant absent entities."""
+        visible_ids = {v.agent_id for v in observation.visible_agents}
+        candidates: list[tuple[float, tuple[int, int]]] = []
+        for eid, rec in self.loss_tracker.records.items():
+            if rec.status != EntityStatus.HISTORICAL:
+                continue
+            if eid in visible_ids:
+                continue
+            mem = self.ltm.get(eid)
+            loc = mem.expected_location if mem is not None else None
+            if loc is None:
+                loc_list = (rec.memory_before or {}).get("expected_location")
+                if loc_list:
+                    loc = (int(loc_list[0]), int(loc_list[1]))
+            if loc is None:
+                continue
+            score = float(rec.significance) + float(rec.search_pressure) + float(
+                rec.social_loss
+            )
+            candidates.append((score, (int(loc[0]), int(loc[1]))))
+        if not candidates:
+            return None
+        candidates.sort(key=lambda item: -item[0])
+        _, target = candidates[0]
+        # Elevated seek probability under computational loss / search pressure.
+        seek_p = min(0.95, 0.55 + 0.4 * self._absence_behaviour_boost())
+        if rng.random() > seek_p:
+            return None
+        if observation.position.manhattan(Position(*target)) == 0:
+            self.seek_attempts += 1
+            return Action.STAY
+        direction = _direction_to_target(observation.position, target)
+        action = action_toward(direction)
+        if action is None or action not in MOVEMENT_ACTIONS:
+            return None
+        self.seek_attempts += 1
+        self.memory_guided_actions += 1
+        return action
+
     def select_action(self, observation: Observation, rng: ExperimentRNG) -> Action:
         self._update_entity_memories(observation)
         pos = observation.position.as_tuple()
@@ -248,9 +307,22 @@ class SocialAgent(MemoryAgent):
         if investigate is not None:
             return investigate
 
+        # Under loss, prefer seeking the absent partner before casual social chatter.
+        loss_seek = self._maybe_seek_historical_loss(observation, rng)
+        if loss_seek is not None and self._absence_behaviour_boost() >= 0.2:
+            # Still allow adjacent social sometimes so absence messages can emit.
+            adjacent = self._nearest_visible(
+                observation, radius=self.social_config.interact_radius
+            )
+            if adjacent is None or rng.random() > 0.35:
+                return loss_seek
+
         social_action = self._social_or_spatial_action(observation, rng)
         if social_action is not None:
             return social_action
+
+        if loss_seek is not None:
+            return loss_seek
 
         # Fall back to memory-seeking for absent partners, then Q-learning.
         memory_action = self._maybe_seek_remembered(observation, rng)

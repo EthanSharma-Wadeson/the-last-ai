@@ -28,6 +28,8 @@ class Concept(str, Enum):
     ADDRESSEE = "addressee"
     SELF = "self"
     DELAY = "delay"
+    QUERY_LOCATION = "query_location"
+    ABSENCE = "absence"
     UNKNOWN = "unknown"
 
 
@@ -46,6 +48,8 @@ DEFAULT_TOKEN_MEANINGS: dict[str, Concept] = {
     "you": Concept.ADDRESSEE,
     "me": Concept.SELF,
     "wait": Concept.DELAY,
+    "where": Concept.QUERY_LOCATION,
+    "gone": Concept.ABSENCE,
 }
 
 

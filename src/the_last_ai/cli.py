@@ -140,6 +140,54 @@ def main(argv: list[str] | None = None) -> int:
     )
     exp9.add_argument("--output-dir", type=Path, default=Path("outputs/experiment_9"))
 
+    spectate = sub.add_parser(
+        "spectate",
+        help="Live spectator: watch the real simulation in a browser (or --terminal)",
+    )
+    spectate.add_argument("--seed", type=int, default=0)
+    spectate.add_argument("--agents", type=int, default=20)
+    spectate.add_argument(
+        "--ticks",
+        type=int,
+        default=None,
+        help="Max ticks (default 5000 free-run; with --schedule acts as safety cap)",
+    )
+    spectate.add_argument(
+        "--schedule",
+        type=str,
+        default=None,
+        help="Optional collapse schedule, e.g. 50,25,10,5,2,1",
+    )
+    spectate.add_argument("--ticks-between", type=int, default=30)
+    spectate.add_argument("--final-ticks", type=int, default=40)
+    spectate.add_argument("--width", type=int, default=None)
+    spectate.add_argument("--height", type=int, default=None)
+    spectate.add_argument("--resources", type=int, default=None)
+    spectate.add_argument("--spectate", type=str, default="agent_000")
+    spectate.add_argument("--speed", type=float, default=5.0)
+    spectate.add_argument("--port", type=int, default=8765)
+    spectate.add_argument("--host", type=str, default="127.0.0.1")
+    spectate.add_argument(
+        "--terminal",
+        action="store_true",
+        help="ASCII terminal spectator instead of browser",
+    )
+    spectate.add_argument(
+        "--no-open",
+        action="store_true",
+        help="Do not auto-open a browser tab",
+    )
+    spectate.add_argument(
+        "--demo",
+        type=str,
+        default=None,
+        choices=["loss", "collapse", "contrast", "free"],
+        help="Guided experience: loss, contrast (friend vs stranger), collapse, or free",
+    )
+    spectate.add_argument(
+        "--output-dir", type=Path, default=Path("outputs/spectator")
+    )
+
     last = sub.add_parser(
         "the-last-ai",
         help="Centrepiece collapse: 100→50→25→10→5→2→1 with mind snapshots",
@@ -358,6 +406,36 @@ def main(argv: list[str] | None = None) -> int:
         )
         print(result["report"]["aggregates"])
         print(f"Wrote {result['report_path']}")
+        return 0
+
+    if args.command == "spectate":
+        from the_last_ai.spectator.cli import run_spectate_command
+
+        schedule = None
+        if args.schedule:
+            schedule = [int(x) for x in args.schedule.split(",") if x.strip()]
+        ticks = args.ticks
+        if ticks is None and not schedule:
+            ticks = 5000
+        run_spectate_command(
+            seed=args.seed,
+            agents=args.agents,
+            ticks=ticks,
+            schedule=schedule,
+            ticks_between=args.ticks_between,
+            final_ticks=args.final_ticks,
+            width=args.width,
+            height=args.height,
+            resources=args.resources,
+            spectate=args.spectate,
+            speed=args.speed,
+            port=args.port,
+            host=args.host,
+            terminal=args.terminal,
+            no_open=args.no_open,
+            output_dir=args.output_dir,
+            demo=args.demo,
+        )
         return 0
 
     if args.command == "the-last-ai":

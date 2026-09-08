@@ -193,6 +193,20 @@ Does not demonstrate subjective sadness, grief, or consciousness.
 
 ---
 
+## Live Spectator
+
+Watch the real simulation in a browser canvas (or terminal).
+
+```bash
+last-ai spectate --seed 0 --agents 20 --ticks 5000
+last-ai spectate --seed 0 --agents 100 --schedule 50,25,10,5,2,1
+last-ai spectate --terminal --seed 0 --agents 12 --ticks 200
+```
+
+See `docs/SPECTATOR.md`.
+
+---
+
 ## Reproducibility
 
 Every experiment must record:

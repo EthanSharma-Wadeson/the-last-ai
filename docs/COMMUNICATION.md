@@ -20,9 +20,11 @@ This is a measurable information channel — not language understanding, conscio
 
 Fixed primitive tokens mapped to internal concepts:
 
-`hi yes no come go food help stop here there you me wait`
+`hi yes no come go food help stop here there you me wait where gone`
 
 Tokens are symbols. Meanings are separate `Concept` values. Later phases can replace `"food"` with arbitrary tokens (e.g. `"ka"`) without rewriting the exchange pipeline.
+
+Absence-conditioned construction (post-disappearance) may emit `you`/`where`/`gone`/`wait`/`no`/`come`/`here` from measurable `social_loss`, search pressure, and prediction disruption — never from a `sadness` variable.
 
 ## Messages
 
