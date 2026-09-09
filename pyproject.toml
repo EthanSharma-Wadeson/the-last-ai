@@ -7,7 +7,11 @@ name = "the-last-ai"
 version = "0.1.0"
 description = "Experimental artificial-cognition simulation studying memory and disappearance."
 readme = "README.md"
+license = { text = "MIT" }
 requires-python = ">=3.11"
+authors = [
+    { name = "Ethan Sharma-Wadeson" },
+]
 dependencies = [
     "numpy>=1.26",
     "matplotlib>=3.8",
