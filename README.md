@@ -171,3 +171,6 @@ src/the_last_ai/
 ```
 
 See `docs/` for specifications, experiments, and roadmap. See `docs/COMMUNICATION.md` for the communication pathway.
+## License
+
+MIT — see [`LICENSE`](LICENSE).
