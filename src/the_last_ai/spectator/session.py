@@ -88,6 +88,11 @@ class SpectatorSession:
     contrast: JSONDict | None = None
     cinema_dim: bool = True
     metric_history: deque = field(default_factory=lambda: deque(maxlen=120))
+    demo_loop: bool = False
+    loop_count: int = 1
+    demo_hold_ticks: int = 28
+    demo_shrink_dwell: int = 5
+    _create_kwargs: dict = field(default_factory=dict)
     _comm_cursor: int = 0
     _schedule_idx: int = 0
     _phase_ticks: int = 0
@@ -121,17 +126,44 @@ class SpectatorSession:
         demo: str | None = None,
     ) -> SpectatorSession:
         demo = (demo or "").strip().lower() or None
+        if demo in {"morning", "loop"}:
+            demo = "open"
         schedule = list(schedule or [])
+        create_kwargs = {
+            "seed": seed,
+            "n_agents": n_agents,
+            "width": width,
+            "height": height,
+            "n_resources": n_resources,
+            "schedule": list(schedule),
+            "ticks_between": ticks_between,
+            "final_ticks": final_ticks,
+            "max_ticks": max_ticks,
+            "spectate_id": spectate_id,
+            "speed": speed,
+            "output_dir": str(output_dir),
+            "agent_type": agent_type,
+            "demo": demo,
+        }
 
-        if demo == "loss" or demo == "contrast":
+        if demo in {"loss", "contrast", "open"}:
             n_agents = min(n_agents, 12) if n_agents else 12
-            n_agents = max(4 if demo == "loss" else 5, n_agents)
+            if demo == "open":
+                n_agents = max(6, min(n_agents, 8))
+            else:
+                n_agents = max(4 if demo == "loss" else 5, n_agents)
             width = width or 14
             height = height or 10
             n_resources = n_resources if n_resources is not None else 6
-            if max_ticks is None:
+            if max_ticks is None and demo != "open":
                 max_ticks = 280 if demo == "contrast" else 200
-            speed = max(speed, 4.0)
+            if demo == "open":
+                max_ticks = None  # loops forever
+                # Keep it readable for a live audience unless explicitly slowed/sped
+                if speed >= 5.0:
+                    speed = 3.5
+            else:
+                speed = max(speed, 4.0)
         elif demo == "collapse":
             if not schedule:
                 schedule = [max(2, n_agents // 2), max(1, n_agents // 4), 1]
@@ -160,14 +192,14 @@ class SpectatorSession:
             resource_regen_interval=12,
         )
         sim = Simulation.create(config)
-        dense = demo in {"loss", "collapse", "contrast"}
+        dense = demo in {"loss", "collapse", "contrast", "open"}
         _configure_agents(sim, dense=dense)
         if spectate_id in sim.agents:
             sim.observatory.focus({spectate_id})
 
         partner = "agent_001" if "agent_001" in sim.agents else None
         stranger = "agent_002" if "agent_002" in sim.agents else None
-        if demo in {"loss", "contrast"}:
+        if demo in {"loss", "contrast", "open"}:
             phase = "bond"
             if partner:
                 _cluster_pair(sim, spectate_id, partner, Position(4, 4))
@@ -191,7 +223,21 @@ class SpectatorSession:
             demo_mode=demo,
             demo_partner_id=partner or "agent_001",
             demo_stranger_id=stranger or "agent_002",
+            demo_loop=(demo == "open"),
+            demo_bond_ticks=32 if demo == "open" else 45,
+            demo_post_ticks=55 if demo == "open" else 90,
         )
+        session._create_kwargs = {
+            **create_kwargs,
+            "n_agents": n_agents,
+            "width": width,
+            "height": height,
+            "n_resources": n_resources,
+            "schedule": list(schedule),
+            "max_ticks": max_ticks,
+            "speed": speed,
+            "demo": demo,
+        }
         session.world_static = build_world_static(sim)
         session.output_dir.mkdir(parents=True, exist_ok=True)
         session._emit(
@@ -205,6 +251,7 @@ class SpectatorSession:
                 "tick": 0,
                 "population": len(sim.active_agent_ids()),
                 "demo_mode": demo,
+                "loop_count": session.loop_count,
             }
         )
         if demo == "loss":
@@ -216,6 +263,15 @@ class SpectatorSession:
             session._cinema(
                 "demo_start",
                 "Contrast demo: remove a bonded friend, then a stranger — compare computational response",
+            )
+        elif demo == "open":
+            session._cinema(
+                "demo_start",
+                "Open morning story (on loop): friends meet → one leaves → world shrinks → restart",
+            )
+            session._cinema(
+                "kid_tip",
+                "Tip: side numbers are SCORES about memory and searching — not real feelings",
             )
         return session
 
@@ -281,6 +337,8 @@ class SpectatorSession:
             "cinema_dim": self.cinema_dim,
             "metric_series": list(self.metric_history),
             "contrast": self.contrast,
+            "loop_count": self.loop_count,
+            "demo_loop": self.demo_loop,
         }
 
     def snapshot(self) -> JSONDict:
@@ -461,7 +519,7 @@ class SpectatorSession:
 
     def _maybe_demo_loss(self) -> bool:
         """Bond → remove significant partner → observe. Returns True if beat consumed."""
-        if self.demo_mode not in {"loss", "contrast"}:
+        if self.demo_mode not in {"loss", "contrast", "open"}:
             return False
         partner = self.demo_partner_id
         stranger = self.demo_stranger_id
@@ -477,9 +535,20 @@ class SpectatorSession:
                 self._capture_baseline()
                 if partner in self.sim.world.agent_positions:
                     self.sim.disappear(partner, reversible=False)
+                    if self.demo_mode == "open":
+                        msg = (
+                            f"Friend {partner} left the world — "
+                            "watch the other agent search and the SCORE numbers change"
+                        )
+                    else:
+                        msg = (
+                            f"{partner} (bonded partner) is no longer present"
+                            if self.demo_mode == "contrast"
+                            else f"{partner} is no longer present — significant partner removed"
+                        )
                     self._cinema(
                         "disappearance",
-                        f"{partner} (bonded partner) is no longer present",
+                        msg,
                         agent_id=partner,
                         population=len(self.sim.active_agent_ids()),
                         role="friend",
@@ -498,6 +567,55 @@ class SpectatorSession:
 
         if self.phase == "post_loss":
             if self._phase_ticks >= self.demo_post_ticks:
+                if self.demo_mode == "open":
+                    self.phase = "open_shrink"
+                    self._phase_ticks = 0
+                    self._cinema(
+                        "phase",
+                        "Now the world gets smaller — other agents leave one by one",
+                    )
+                    return False
+                self._finish_locked()
+            return False
+
+        if self.phase == "open_shrink":
+            active = self.sim.active_agent_ids()
+            if len(active) <= 1:
+                self.phase = "open_hold"
+                self._phase_ticks = 0
+                self._cinema(
+                    "phase",
+                    "Only one agent left — what memory of friends is still stored?",
+                )
+                return False
+            if self._phase_ticks >= self.demo_shrink_dwell:
+                victims = [
+                    aid
+                    for aid in sorted(active, reverse=True)
+                    if aid != self.spectate_id
+                ]
+                if victims:
+                    gone = victims[0]
+                    self.sim.disappear(gone, reversible=False)
+                    self._cinema(
+                        "disappearance",
+                        f"{gone} left — population {len(self.sim.active_agent_ids())}",
+                        agent_id=gone,
+                        population=len(self.sim.active_agent_ids()),
+                    )
+                    self._emit(
+                        {
+                            "type": "population",
+                            "population": len(self.sim.active_agent_ids()),
+                            "tick": self.sim.world.tick,
+                        }
+                    )
+                    self._phase_ticks = 0
+                    return True
+            return False
+
+        if self.phase == "open_hold":
+            if self._phase_ticks >= self.demo_hold_ticks:
                 self._finish_locked()
             return False
 
@@ -553,7 +671,7 @@ class SpectatorSession:
         return False
 
     def _maybe_collapse(self) -> bool:
-        if self.demo_mode in {"loss", "contrast"}:
+        if self.demo_mode in {"loss", "contrast", "open"}:
             return self._maybe_demo_loss()
         if not self.schedule:
             return False
@@ -647,9 +765,89 @@ class SpectatorSession:
             return False
         return False
 
+    def _loop_restart_locked(self) -> None:
+        """Rebuild the simulation in-place so the open-morning story can replay."""
+        kwargs = dict(self._create_kwargs or {})
+        if not kwargs:
+            self.finished = True
+            self.paused = True
+            self.phase = "finished"
+            return
+
+        self.loop_count += 1
+        # Preserve live controls / subscribers across the restart.
+        speed = self.speed
+        cinema_dim = self.cinema_dim
+        subscribers = list(self.subscribers)
+        output_dir = self.output_dir
+        loop_count = self.loop_count
+        create_kwargs = dict(self._create_kwargs)
+
+        fresh = SpectatorSession.create(**kwargs)
+        self.sim = fresh.sim
+        self.world_static = fresh.world_static
+        self.spectate_id = fresh.spectate_id
+        self.phase = fresh.phase
+        self.schedule = list(fresh.schedule)
+        self.demo_mode = fresh.demo_mode
+        self.demo_partner_id = fresh.demo_partner_id
+        self.demo_stranger_id = fresh.demo_stranger_id
+        self.demo_bond_ticks = fresh.demo_bond_ticks
+        self.demo_post_ticks = fresh.demo_post_ticks
+        self.demo_hold_ticks = fresh.demo_hold_ticks
+        self.demo_shrink_dwell = fresh.demo_shrink_dwell
+        self.demo_loop = True
+        self.max_ticks = None
+        self.finished = False
+        self.paused = False
+        self.tick_index = 0
+        self._phase_ticks = 0
+        self._schedule_idx = 0
+        self._dwell_active = False
+        self._comm_cursor = 0
+        self._last_loss_alert_tick = -10_000
+        self._seen_partners = set()
+        self._last_trust = {}
+        self._last_search_attempts = 0
+        self.baseline_metrics = None
+        self.contrast = None
+        self.observatory_paths = None
+        self.metric_history.clear()
+        self.event_buffer.clear()
+        self.subscribers = subscribers
+        self.speed = speed
+        self.cinema_dim = cinema_dim
+        self.output_dir = output_dir
+        self.loop_count = loop_count
+        self._create_kwargs = create_kwargs
+        self.started_at = time.time()
+
+        self._emit(
+            {
+                "type": "loop_restart",
+                "loop_count": self.loop_count,
+                "message": "Story restarting — watch the friends meet again",
+                "tick": 0,
+            }
+        )
+        self._emit({"type": "world", **self.world_static})
+        self._cinema(
+            "loop",
+            f"Loop {self.loop_count}: friends meet again (same science story)",
+        )
+        self._cinema(
+            "kid_tip",
+            "Remember: rising scores mean searching / mismatch — not sadness",
+        )
+        self._emit_snapshot()
+
     def _finish_locked(self) -> None:
         if self.finished:
             return
+        if self.demo_loop:
+            self._loop_restart_locked()
+            return
+
         self.finished = True
         self.paused = True
         self.phase = "finished"
@@ -710,7 +908,7 @@ class SpectatorSession:
 
         before_pop = len(self.sim.active_agent_ids())
         # Keep demo pair clustered during bonding
-        if self.demo_mode in {"loss", "contrast"} and self.phase == "bond":
+        if self.demo_mode in {"loss", "contrast", "open"} and self.phase == "bond":
             if self.demo_partner_id in self.sim.world.agent_positions:
                 _cluster_pair(
                     self.sim, self.spectate_id, self.demo_partner_id, Position(4, 4)
@@ -769,6 +967,9 @@ class SpectatorSession:
         if self.demo_mode == "loss" and self.phase == "post_loss":
             if self._phase_ticks >= self.demo_post_ticks:
                 self._finish_locked()
+        if self.demo_mode == "open" and self.phase == "open_hold":
+            if self._phase_ticks >= self.demo_hold_ticks:
+                self._finish_locked()
         if self.demo_mode == "contrast" and self.phase == "post_stranger":
             if self._phase_ticks >= self.demo_stranger_ticks:
                 # Handled in _maybe_demo_loss on next collapse check; finish here as backup
@@ -791,13 +992,22 @@ class SpectatorSession:
         tick = int(snap.get("tick") or 0)
         if social_loss >= 0.45 and tick - self._last_loss_alert_tick >= 25:
             self._last_loss_alert_tick = tick
-            self._cinema(
-                "social_loss_state",
-                "Elevated computational social-loss state associated with "
-                "absence of historically significant entities",
-                social_loss=social_loss,
-                prediction_error=pe,
-            )
+            if self.demo_mode == "open":
+                self._cinema(
+                    "social_loss_state",
+                    "SCORE up: the program still expects a missing friend "
+                    "(memory + searching — not a feeling)",
+                    social_loss=social_loss,
+                    prediction_error=pe,
+                )
+            else:
+                self._cinema(
+                    "social_loss_state",
+                    "Elevated computational social-loss state associated with "
+                    "absence of historically significant entities",
+                    social_loss=social_loss,
+                    prediction_error=pe,
+                )
 
     def start_background(self) -> None:
         if self._thread and self._thread.is_alive():

@@ -347,6 +347,16 @@
     document.getElementById("speedLabel").textContent = `${snap.speed}×`;
     document.getElementById("phase").textContent = snap.phase || "—";
     document.getElementById("spectating").textContent = snap.spectating || "—";
+    const loopEl = document.getElementById("loopLabel");
+    const loopChip = document.getElementById("loopChip");
+    if (loopEl) {
+      if (snap.demo_loop || snap.demo_mode === "open") {
+        loopEl.textContent = String(snap.loop_count || 1);
+        if (loopChip) loopChip.style.display = "";
+      } else if (loopChip) {
+        loopChip.style.display = "none";
+      }
+    }
     document.getElementById("btnPause").textContent = snap.paused ? "Resume" : "Pause";
     document.getElementById("metricsTitle").textContent =
       `${(snap.spectating || "AGENT").toUpperCase()} — LIVE`;
@@ -514,6 +524,28 @@
       return;
     }
     if (ev.type === "communication") { pushComm(ev); draw(); return; }
+    if (ev.type === "loop_restart") {
+      state.messages = [];
+      state.events = [];
+      state.life = [];
+      state.flashLinks = [];
+      state.lastMetrics = null;
+      const comm = document.getElementById("commFeed");
+      const life = document.getElementById("lifeFeed");
+      const events = document.getElementById("eventFeed");
+      if (comm) comm.innerHTML = "";
+      if (life) life.innerHTML = "";
+      if (events) events.innerHTML = "";
+      showToast(ev.message || `Loop ${ev.loop_count || ""} — story restarts`, true);
+      pushEvent({
+        tick: ev.tick || 0,
+        summary: ev.message || `Loop ${ev.loop_count}`,
+        kind: "loop_restart",
+      });
+      const loopEl = document.getElementById("loopLabel");
+      if (loopEl && ev.loop_count != null) loopEl.textContent = String(ev.loop_count);
+      return;
+    }
     if (ev.type === "cinema") {
       showToast(ev.summary || ev.kind, true);
       pushEvent(ev);

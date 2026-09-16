@@ -36,16 +36,21 @@ def run_spectate_command(
       - loss: bond with partner, remove them, watch computational response
       - contrast: friend removal then stranger removal — compare responses
       - collapse: short population schedule
+      - open: kid-friendly story on loop (meet → leave → shrink → restart)
       - None / free: free-run
     """
     demo = (demo or "").strip().lower() or None
     if demo == "free":
         demo = None
+    if demo in {"morning", "loop"}:
+        demo = "open"
 
     max_ticks = ticks
-    if demo in {"loss", "contrast"} and ticks is None:
+    if demo == "open":
+        max_ticks = None
+    elif demo in {"loss", "contrast"} and ticks is None:
         max_ticks = 280 if demo == "contrast" else 200
-    if schedule and ticks is None and demo not in {"loss", "contrast"}:
+    if schedule and ticks is None and demo not in {"loss", "contrast", "open"}:
         max_ticks = None
     if schedule and ticks is not None:
         max_ticks = max(ticks, ticks_between * (len(schedule) + 2) + final_ticks + agents)

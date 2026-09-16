@@ -332,22 +332,44 @@ def phase_countdown(
     demo_stranger_ticks: int = 50,
 ) -> JSONDict:
     """Human-facing countdown for next meaningful phase change."""
-    if demo_mode in {"loss", "contrast"}:
+    if demo_mode in {"loss", "contrast", "open"}:
         if phase == "bond":
             left = max(0, demo_bond_ticks - phase_ticks)
             return {
-                "label": "Bonding",
-                "next": "Partner disappearance",
+                "label": "Friends meeting" if demo_mode == "open" else "Bonding",
+                "next": "Friend leaves" if demo_mode == "open" else "Partner disappearance",
                 "ticks_remaining": left,
-                "detail": f"{left} ticks until significant partner is removed",
+                "detail": (
+                    f"{left} ticks until a friend leaves the world"
+                    if demo_mode == "open"
+                    else f"{left} ticks until significant partner is removed"
+                ),
             }
         if phase == "post_loss":
             left = max(0, demo_post_ticks - phase_ticks)
             return {
-                "label": "Post-disappearance",
-                "next": "Session end",
+                "label": "After friend left" if demo_mode == "open" else "Post-disappearance",
+                "next": "World shrinks" if demo_mode == "open" else "Session end",
                 "ticks_remaining": left,
-                "detail": "Watch prediction mismatch, search, and social-loss",
+                "detail": (
+                    "Watch searching + score changes (not feelings)"
+                    if demo_mode == "open"
+                    else "Watch prediction mismatch, search, and social-loss"
+                ),
+            }
+        if phase == "open_shrink":
+            return {
+                "label": "World shrinking",
+                "next": "Last agent",
+                "ticks_remaining": max(0, population - 1),
+                "detail": f"{max(0, population - 1)} agents still to leave",
+            }
+        if phase == "open_hold":
+            return {
+                "label": "Last agent",
+                "next": "Story restarts",
+                "ticks_remaining": None,
+                "detail": "What memory remains? Then the story loops",
             }
         if phase == "post_friend":
             left = max(0, demo_post_ticks - phase_ticks)

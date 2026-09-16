@@ -136,6 +136,8 @@ def build_live_snapshot(
     cinema_dim: bool = True,
     metric_series: list[JSONDict] | None = None,
     contrast: JSONDict | None = None,
+    loop_count: int = 1,
+    demo_loop: bool = False,
 ) -> JSONDict:
     """Current-frame snapshot for the browser renderer (not full history)."""
     active = list(sim.active_agent_ids())
@@ -235,6 +237,8 @@ def build_live_snapshot(
         "behaviour_rates": rates,
         "metric_series": list(metric_series or []),
         "contrast": contrast,
+        "loop_count": int(loop_count),
+        "demo_loop": bool(demo_loop),
         "spotlight": spotlight,
         "causal_chain": chain,
         "patterns": patterns,

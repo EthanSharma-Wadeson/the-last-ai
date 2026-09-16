@@ -284,6 +284,42 @@ def test_demo_contrast_builds_friend_stranger_summary(tmp_path):
     assert "behaviour_rates" in snap
 
 
+def test_demo_open_loops_story(tmp_path):
+    session = SpectatorSession.create(
+        seed=0,
+        demo="open",
+        speed=100,
+        output_dir=tmp_path,
+    )
+    assert session.demo_mode == "open"
+    assert session.demo_loop is True
+    assert session.max_ticks is None
+    session.demo_bond_ticks = 4
+    session.demo_post_ticks = 5
+    session.demo_shrink_dwell = 1
+    session.demo_hold_ticks = 3
+    saw_shrink = False
+    saw_hold = False
+    loops_before = session.loop_count
+    guard = 0
+    while session.loop_count == loops_before and guard < 400:
+        session.step_once()
+        if session.phase == "open_shrink":
+            saw_shrink = True
+        if session.phase == "open_hold":
+            saw_hold = True
+        guard += 1
+    assert saw_shrink
+    assert saw_hold
+    assert session.loop_count == loops_before + 1
+    assert session.finished is False
+    assert session.phase == "bond"
+    assert "agent_001" in session.sim.world.agent_positions
+    snap = session.snapshot()
+    assert snap.get("demo_loop") is True
+    assert snap.get("loop_count") == session.loop_count
+
+
 def test_absence_message_tagged_in_feed_format():
     entry = format_communication_entry(
         {

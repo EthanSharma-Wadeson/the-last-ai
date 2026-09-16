@@ -114,9 +114,10 @@ Prefer hundreds of seeded trials, statistics, and failure analysis over new feat
 - [x] Live metrics + communication feed + events
 - [x] Collapse schedule support + terminal fallback
 - [x] SSE/HTTP interface (`last-ai spectate`)
-- [x] Demo modes (`--demo loss|collapse|contrast`), causal chain, deltas, spotlight, cinema moments
+- [x] Demo modes (`--demo loss|collapse|contrast|open`), causal chain, deltas, spotlight, cinema moments
 - [x] Absence-conditioned messaging + sparklines + friend/stranger contrast
-- [x] Docs: `docs/SPECTATOR.md`
+- [x] Open-morning looping story (`--demo open`)
+- [x] Docs: `docs/SPECTATOR.md`, `docs/OPEN_MORNING.md`
 
 ## Phase 6b — Research publication loop
 

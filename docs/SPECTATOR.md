@@ -11,9 +11,16 @@ The browser is a **renderer only**. It does not invent agents, messages, emotion
 ```bash
 source .venv/bin/activate
 
-# Best for “computational loss” readability:
-# bond with a partner → remove them → watch PE / search / social-loss chain
-last-ai spectate --demo loss --seed 0 --speed 6
+# Open morning story (loops forever — best for a class screen)
+
+```bash
+source .venv/bin/activate
+last-ai spectate --demo open --seed 0
+```
+
+Story on loop: friends meet → one leaves → scores/search change → world shrinks → last agent → restart.
+
+Aliases: `--demo morning` or `--demo loop` (same as `open`).
 
 # Friend vs stranger contrast (bonded partner removed, then low-bond stranger)
 last-ai spectate --demo contrast --seed 0 --speed 6

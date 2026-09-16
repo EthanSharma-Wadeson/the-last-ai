@@ -53,6 +53,7 @@ a { color: var(--accent); }
 .chip strong { font-size: 0.92rem; font-variant-numeric: tabular-nums; }
 .chip.accent { border-color: var(--accent); }
 .chip.warn { border-color: var(--warn); }
+#loopChip { display: none; }
 .controls { display: flex; flex-wrap: wrap; gap: 0.35rem; align-items: center; }
 .controls .hidden { display: none; }
 

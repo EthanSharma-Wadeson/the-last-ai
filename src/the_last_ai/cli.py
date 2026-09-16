@@ -181,8 +181,8 @@ def main(argv: list[str] | None = None) -> int:
         "--demo",
         type=str,
         default=None,
-        choices=["loss", "collapse", "contrast", "free"],
-        help="Guided experience: loss, contrast (friend vs stranger), collapse, or free",
+        choices=["loss", "collapse", "contrast", "open", "free"],
+        help="Guided experience: loss, contrast, collapse, open (looping open-morning story), or free",
     )
     spectate.add_argument(
         "--output-dir", type=Path, default=Path("outputs/spectator")
